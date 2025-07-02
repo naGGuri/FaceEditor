@@ -2,15 +2,25 @@
 // 설명: 이미지 업로드, 세그멘테이션, 색상/투명도 조절, Undo/Redo, 로그 패널을 포함한 메인 에디터 (Before/After/LogPanel 크기 조절 기능 포함)
 
 import React, { useState, useRef } from "react";
+
+// components
 import Before from "../components/Before";
-import After2 from "../components/After2";
+import After from "../components/After";
 import Header from "../components/Header";
 import LeftSidebar from "../components/LeftSidebar";
 import RightSidebar from "../components/RightSidebar";
 import SubSidebar from "../components/SubSidebar";
 import LogPanel from "../components/LogPanel";
+
+// api
+import { uploadImageToSegmentAPI } from "../api/segment";
+
+// store
+import { saveSession } from "../api/save";
+import { loadSession } from "../api/load";
+import { useColorStore } from "../store/colorStore";
+import { useOpacityStore } from "../store/opacityStore";
 import { defaultColorMap, defaultOpacityMap } from "../utils/defaultMaps";
-import { saveConfigAPI, loadConfigAPI } from "../api/config";
 
 export interface LogEntry {
     message: string;
@@ -22,17 +32,23 @@ const Editor: React.FC = () => {
     const logPanelRef = useRef<HTMLDivElement>(null);
 
     const [imageUrl, setImageUrl] = useState<string>("");
+    const [maskUrl, setMaskUrl] = useState<string>("");
     const [sessionId, setSessionId] = useState<string>("");
-    const [partIndexMap, setPartIndexMap] = useState<number[][]>([]);
-    const [colorMap, setColorMap] = useState<Record<number, [number, number, number]>>(defaultColorMap);
-    const [opacityMap, setOpacityMap] = useState<Record<number, number>>(defaultOpacityMap);
+
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
 
-    const [history, setHistory] = useState<{ colorMap: typeof colorMap; opacityMap: typeof opacityMap }[]>([]);
+    const [history, setHistory] = useState<
+        { colorMap: Record<string, [number, number, number]>; opacityMap: Record<string, number> }[]
+    >([]);
     const [historyIndex, setHistoryIndex] = useState<number>(-1);
 
-    const [beforeWidth, setBeforeWidth] = useState<number>(50); // 좌우 분할 비율
+    const [beforeWidth, setBeforeWidth] = useState<number>(50);
+
+    const colorMap = useColorStore((state) => state.colorMap);
+    const setColorMap = useColorStore((state) => state.setColorMap);
+    const opacityMap = useOpacityStore((state) => state.opacityMap);
+    const setOpacityMap = useOpacityStore((state) => state.setOpacityMap);
 
     const handleVerticalResize = () => {
         const onMouseMove = (moveEvent: MouseEvent) => {
@@ -90,27 +106,19 @@ const Editor: React.FC = () => {
     };
 
     const handleUpload = async (file: File) => {
-        const formData = new FormData();
-        formData.append("file", file);
-
         try {
-            const res = await fetch(import.meta.env.VITE_API_BASE_URL + "/segment", {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
+            const { session_id, mask_url } = await uploadImageToSegmentAPI(file);
             const url = URL.createObjectURL(file);
 
             setImageUrl(url);
-            setSessionId(data.session_id);
-            setPartIndexMap(data.part_index_map);
+            setMaskUrl(mask_url);
+            setSessionId(session_id);
             setColorMap(defaultColorMap);
             setOpacityMap(defaultOpacityMap);
             pushHistory(defaultColorMap, defaultOpacityMap);
 
             addLog("Image uploaded and segmentation completed");
-            addLog("Session ID: " + data.session_id);
+            addLog("Session ID: " + session_id);
         } catch (error) {
             console.error("Upload error:", error);
             addLog("❌ Failed to upload image and run segmentation");
@@ -142,32 +150,22 @@ const Editor: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
-        if (!sessionId) {
-            addLog("❌ Cannot save: sessionId is missing");
-            return;
-        }
-        saveConfigAPI(sessionId, { colorMap, opacityMap });
-        addLog("Settings saved");
+    const handleSave = async () => {
+        console.log("🟡 저장 직전 colorMap:", colorMap);
+        console.log("🟡 저장 직전 opacityMap:", opacityMap);
+        await saveSession(sessionId, colorMap, opacityMap);
+        addLog("Session saved");
     };
 
     const handleLoad = async () => {
-        if (!sessionId) {
-            addLog("❌ Cannot load: sessionId is missing");
-            return;
-        }
-
-        try {
-            const data = await loadConfigAPI(sessionId);
-            setColorMap(data.colorMap);
-            setOpacityMap(data.opacityMap);
-            setTimeout(() => {
-                pushHistory(data.colorMap, data.opacityMap);
-            }, 0);
-            addLog("Settings loaded from server");
-        } catch (error) {
-            console.error("Load error:", error);
-            addLog("❌ Failed to load: Network or server error");
+        const result = await loadSession(sessionId);
+        if (result) {
+            setColorMap(result.colorMap);
+            setOpacityMap(result.opacityMap);
+            pushHistory(result.colorMap, result.opacityMap);
+            addLog("Session loaded");
+        } else {
+            addLog("❌ Failed to load session");
         }
     };
 
@@ -192,9 +190,9 @@ const Editor: React.FC = () => {
                         </div>
                         <div onMouseDown={handleVerticalResize} className="w-[1px] cursor-col-resize bg-white h-full" />
                         <div style={{ width: `${100 - beforeWidth}%` }} className="h-full">
-                            <After2
+                            <After
                                 originalUrl={imageUrl}
-                                partIndexMap={partIndexMap}
+                                maskUrl={maskUrl}
                                 colorMap={colorMap}
                                 opacityMap={opacityMap}
                             />

@@ -1,46 +1,37 @@
-# 파일: app/routes/segment.py
-# 설명: 업로드된 이미지를 기반으로 세그멘테이션을 수행하고 결과 반환
+# app/routes/segment.py
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
-import uuid
-from app.services.segment import run_face_segmentation  # 경로 수정
-
+from app.services.hash_utils import compute_image_hash
+from app.services.segment import run_segment
 import os
 
-router = APIRouter()  # 함수 호출로 변경해야 제대로 작동함
+router = APIRouter()
+
+# 절대 경로 기준으로 static/masks 폴더 지정
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # app/ 기준
+MASKS_DIR = os.path.join(BASE_DIR, "static", "masks")  # 절대 경로
 
 
 @router.post("/segment")
 async def segment_face(file: UploadFile = File(...)):
     """
-    업로드된 얼굴 이미지를 세그멘테이션하고 결과 마스크와 part_index_map을 반환합니다.
+    업로드된 얼굴 이미지를 세그멘테이션하고 마스크 이미지를 반환한다.
     """
 
-    # 1. 고유한 세션 ID 생성
-    session_id = str(uuid.uuid4())
+    content = await file.read()
+    image_hash = compute_image_hash(content)
+    mask_filename = f"{image_hash}_mask.png"
+    mask_path = os.path.join(MASKS_DIR, mask_filename)
+    # print(mask_path)
 
-    # 2. 저장 경로 설정
-    static_dir = "app/static"
-    os.makedirs(static_dir, exist_ok=True)  # 디렉토리 없으면 생성
-    input_path = os.path.join(static_dir, f"{session_id}_input.jpg")
+    # 디렉토리 없으면 생성
+    os.makedirs(MASKS_DIR, exist_ok=True)
 
-    try:
-        # 3. 업로드 파일 저장
-        with open(input_path, "wb") as f:
-            f.write(await file.read())
+    if not os.path.exists(mask_path):
+        run_segment(content, mask_path)
 
-        # 4. 얼굴 세그멘테이션 실행
-        mask_path, part_index_map = run_face_segmentation(
-            input_path, session_id)
-
-        # 5. 결과 반환
-        return JSONResponse(content={
-            "session_id": session_id,
-            "mask_url": mask_path,  # 상대 URL 경로 (예: static/xxxx_mask.png)
-            "part_index_map": part_index_map
-        })
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Segmentation failed: {str(e)}")
+    return {
+        "session_id": image_hash,
+        "mask_url": f"/static/masks/{mask_filename}"
+    }
