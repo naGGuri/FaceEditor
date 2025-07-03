@@ -5,12 +5,9 @@ from fastapi.responses import JSONResponse
 from app.services.hash_utils import compute_image_hash
 from app.services.segment import run_segment
 import os
+from app.config import MASKS_DIR
 
 router = APIRouter()
-
-# 절대 경로 기준으로 static/masks 폴더 지정
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # app/ 기준
-MASKS_DIR = os.path.join(BASE_DIR, "static", "masks")  # 절대 경로
 
 
 @router.post("/segment")

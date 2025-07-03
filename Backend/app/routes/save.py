@@ -5,15 +5,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 import json
+from app.config import SESSIONS_DIR
 
 router = APIRouter()
 
-# 절대 경로로 세션 저장 폴더 설정
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SESSIONS_DIR = os.path.join(BASE_DIR, "static", "sessions")
 
-
-# 요청 바디 구조 정의
 class SavePayload(BaseModel):
     session_id: str
     color_map: dict[str, list[int]]  # 예: {"1": [255, 0, 0]}

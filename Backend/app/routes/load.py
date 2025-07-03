@@ -5,12 +5,9 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import JSONResponse
 import os
 import json
+from app.config import SESSIONS_DIR
 
 router = APIRouter()
-
-# 절대 경로로 세션 저장 폴더 설정
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SESSIONS_DIR = os.path.join(BASE_DIR, "static", "sessions")
 
 
 @router.get("/load")
