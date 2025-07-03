@@ -106,6 +106,11 @@ const Editor: React.FC = () => {
     };
 
     const handleUpload = async (file: File) => {
+        if (!file || file.size === 0) {
+            addLog("⚠️ 올바른 이미지를 선택하세요.");
+            return;
+        }
+
         try {
             const { session_id, mask_url } = await uploadImageToSegmentAPI(file);
             const url = URL.createObjectURL(file);
@@ -116,20 +121,24 @@ const Editor: React.FC = () => {
             setColorMap(defaultColorMap);
             setOpacityMap(defaultOpacityMap);
             pushHistory(defaultColorMap, defaultOpacityMap);
-
-            addLog("Image uploaded and segmentation completed");
-            addLog("Session ID: " + session_id);
+            addLog("세션 ID: " + session_id);
+            addLog("편집할 이미지 로드 : " + mask_url);
         } catch (error) {
             console.error("Upload error:", error);
-            addLog("❌ Failed to upload image and run segmentation");
+            addLog("❌ 이미지 업로드에 실패했습니다.");
         }
     };
 
     const handleReset = () => {
+        if (!sessionId) {
+            addLog("⚠️ [Reset] 초기화할 이미지가 없습니다.");
+            return;
+        }
+
         setColorMap(defaultColorMap);
         setOpacityMap(defaultOpacityMap);
         pushHistory(defaultColorMap, defaultOpacityMap);
-        addLog("Settings reset");
+        addLog("🔄 [Reset] 편집 초기화");
     };
 
     const handleUndo = () => {
@@ -137,7 +146,9 @@ const Editor: React.FC = () => {
             const newIndex = historyIndex - 1;
             setHistoryIndex(newIndex);
             applyHistory(newIndex);
-            addLog("Undo operation performed");
+            addLog("↩️ Undo");
+        } else {
+            addLog("⚠️ [Undo] 이전 기록이 없습니다.");
         }
     };
 
@@ -146,26 +157,41 @@ const Editor: React.FC = () => {
             const newIndex = historyIndex + 1;
             setHistoryIndex(newIndex);
             applyHistory(newIndex);
-            addLog("Redo operation performed");
+            addLog("↪️ Redo");
+        } else {
+            addLog("⚠️ [Rndo] 이후 기록이 없습니다.");
         }
     };
 
     const handleSave = async () => {
-        console.log("🟡 저장 직전 colorMap:", colorMap);
-        console.log("🟡 저장 직전 opacityMap:", opacityMap);
+        if (!sessionId) {
+            addLog("⚠️ [Save] 세션 ID가 없습니다. 이미지를 먼저 업로드하세요.");
+            return;
+        }
+
+        if (Object.keys(colorMap).length === 0 && Object.keys(opacityMap).length === 0) {
+            addLog("⚠️ [Save] 저장할 내용이 없습니다. 먼저 편집을 진행하세요.");
+            return;
+        }
+
         await saveSession(sessionId, colorMap, opacityMap);
-        addLog("Session saved");
+        addLog("✅ [Save] 세션이 저장되었습니다.");
     };
 
     const handleLoad = async () => {
+        if (!sessionId) {
+            addLog("⚠️ [Load] 세션 ID가 없습니다. 이미지를 먼저 업로드하세요.");
+            return;
+        }
+
         const result = await loadSession(sessionId);
         if (result) {
             setColorMap(result.colorMap);
             setOpacityMap(result.opacityMap);
             pushHistory(result.colorMap, result.opacityMap);
-            addLog("Session loaded");
+            addLog("✅ [Load] 세션이 로드되었습니다.");
         } else {
-            addLog("❌ Failed to load session");
+            addLog("❌ [Load] 세션을 불러오지 못했습니다.");
         }
     };
 
@@ -180,7 +206,7 @@ const Editor: React.FC = () => {
                 onLoad={handleLoad}
             />
             <div className="flex flex-1">
-                <LeftSidebar onUpload={handleUpload} />
+                <LeftSidebar onUpload={handleUpload} sessionId={sessionId} />
 
                 <div className="flex-1 flex flex-col">
                     {/* 편집 뷰 */}

@@ -18,7 +18,6 @@ export async function uploadImageToSegmentAPI(file: File): Promise<SegmentRespon
                 "Content-Type": "multipart/form-data",
             },
         });
-
         console.log("✅ 세그멘테이션 성공:", response.data);
         return response.data;
     } catch (error) {

@@ -12,8 +12,7 @@ export async function loadSession(sessionId: string): Promise<{
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/load`, {
             params: { session_id: sessionId },
         });
-
-        console.log("✅ 세션 불러오기 성공", response.data);
+        console.log("✅ Session loaded", response.data);
 
         // 문자열 key → number key로 변환
         const colorMap: Record<number, [number, number, number]> = {};

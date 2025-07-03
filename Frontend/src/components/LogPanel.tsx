@@ -10,7 +10,7 @@ export type LogEntry = {
 
 interface Props {
     logs: LogEntry[];
-    height?: number; // ✅ height를 props로 받아옵니다 (선택적)
+    height?: number;
 }
 
 const LogPanel: React.FC<Props> = ({ logs, height = 120 }) => {

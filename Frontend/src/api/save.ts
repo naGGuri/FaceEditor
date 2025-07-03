@@ -9,8 +9,8 @@ export async function saveSession(sessionId: string, colorMap: object, opaciryMa
             color_map: colorMap,
             opacity_map: opaciryMap,
         });
-        console.log("✅ 세션 저장 성공");
+        console.log("💾 Session saved");
     } catch (error) {
-        console.error("❌ 세션 저장 실패", error);
+        console.error("❌ Failed to load session", error);
     }
 }

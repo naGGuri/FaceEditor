@@ -13,10 +13,6 @@ const After: React.FC<Props> = ({ originalUrl, maskUrl, colorMap, opacityMap }) 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
-        console.log("🟡 After useEffect triggered");
-        console.log("🟡 originalUrl:", originalUrl);
-        console.log("🟡 maskUrl:", maskUrl);
-
         if (!originalUrl || !maskUrl) return;
 
         const originalImg = new Image();
@@ -32,8 +28,6 @@ const After: React.FC<Props> = ({ originalUrl, maskUrl, colorMap, opacityMap }) 
             new Promise((resolve) => (originalImg.onload = resolve)),
             new Promise((resolve) => (maskImg.onload = resolve)),
         ]).then(() => {
-            console.log("✅ 이미지 모두 로드됨");
-
             const canvas = canvasRef.current;
             if (!canvas) {
                 console.error("❌ canvasRef가 null입니다");
@@ -84,7 +78,7 @@ const After: React.FC<Props> = ({ originalUrl, maskUrl, colorMap, opacityMap }) 
 
     return (
         <div className="w-full h-full flex justify-center items-center bg-[#242424]">
-            <canvas ref={canvasRef} className="max-w-full max-h-full" />
+            <canvas id="after-canvas" ref={canvasRef} className="max-w-full max-h-full" />
         </div>
     );
 };
